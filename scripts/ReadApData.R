@@ -1,26 +1,132 @@
 library(rvest)
+library(tidyverse)
 library(chromote)
+library(xml2)
+library(dplyr)
+library(googlesheets4)
+library(googledrive)
 
-url <- "https://bigfuture.collegeboard.org/colleges/california-state-university-fullerton/academics"
+DELAY_TIME <- 2
 
-b <- ChromoteSession$new()
+#Authenticate Drive
+googledrive::drive_auth(email = "connormaass2@gmail.com")
 
-# Navigate to the site
+meta <- googlesheets4::gs4_find("College Research")
+
+wantedCourses <- meta|> 
+  googlesheets4::read_sheet(range = "A1:A6")
+
+# 1. Start a base session
+b_bad <- ChromoteSession$new()
+
+# 2. Create an incognito browser context
+incognito_context <- b_bad$parent$Target$createBrowserContext(disposeOnDetach = TRUE)
+
+# 3. Create a new tab inside that incognito context
+target <- b_bad$parent$Target$createTarget(
+  url = "https://www.w3schools.com/r/r_arrays.asp", 
+  browserContextId = incognito_context$browserContextId
+)
+
+# 4. Attach a chromote session to the new tab
+b <- ChromoteSession$new(targetId = target$targetId)
+
+b$view()
+
+# for signing in
+
+formSubmit <- function(formID, inputIdentifier, input){
+
+  js_fill <- paste0(
+    'input = document.querySelector("#', formID, ' input[', inputIdentifier, ']");
+  input.value = "' , input , '";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  ')
+  b$Runtime$evaluate(js_fill)
+  js_submit <- paste0('btn = document.querySelector("#', formID, ' input[type=submit]"); ',
+                      'if (btn) btn.click();')
+  b$Runtime$evaluate(js_submit)
+}
+
+url <- "https://account.collegeboard.org/login/login?idp=ECL&appId=3&DURL=https://bigfuture.collegeboard.org/college-search/college-list?viewmode=card"
+
+username <- "connormaass2@gmail.com"
+password <- "kokoKra21!"
+
+
 b$Page$navigate(url)
 
-# Pause to let JS scripts finish running
-Sys.sleep(5)
+Sys.sleep(DELAY_TIME)
 
-# Extract the DOM HTML AFTER JavaScript has rendered it
-html_doc <- b$Runtime$evaluate("document.documentElement.outerHTML")$result$value
+formSubmit("form20", "name=identifier", username)
 
-webpage <- read_html(html_doc)
+Sys.sleep(DELAY_TIME)
 
-webData <- webpage %>%
-  html_node(".csp-ap-credit-policy-table") %>%
-  html_table()
+# get passed choose authentication method, I do password
+b$Runtime$evaluate('btn = document.querySelector(\'a[aria-label="Select Password."]\');
+  if(btn){
+    btn.click()
+  }
+  ')
+
+Sys.sleep(DELAY_TIME)
+
+formSubmit("form75", "type=password", password)
+
+Sys.sleep(10)
+
+#Now we can see the college list
+html_raw <- b$Runtime$evaluate("document.documentElement.outerHTML")$result$value
+
+iframe <- read_html(html_raw) |> 
+  html_element(".cbw-header-login")
+
+iframe
+
+print("loook")
+
+b$Runtime$evaluate('var shadowParent = document.querySelector("cbw-header")')
+
+b$Runtime$evaluate('btn = shadowParent.shadowRoot.querySelector("a[data-cbtrack-label=\'Toggle Account Panel\']");
+  if(btn){
+    btn.click();
+  }
+  ')
+Sys.sleep(1)
+
+b$Runtime$evaluate('btn = document.querySelector(\'button[data-cbtrack-label="Sign Out"]\');
+  if(btn){
+    btn.click()
+  }
+  ')
 
 
-webData
 
 b$close()
+
+webpage <- read_html(html_raw)
+favs <- webpage |> 
+  html_nodes(".college-name-anchor")
+
+for(fav in favs){
+  link <- fav |> 
+    html_attr("href") |> 
+    paste0("/academics")
+
+  sesh <- ChromoteSession$new()
+  sesh$view()
+  sesh$Page$navigate(link)
+  Sys.sleep(1)
+  html_raw <- sesh$Runtime$evaluate("document.documentElement.outerHTML")$result$value
+  sesh$close()
+  college <- read_html(html_raw)
+  
+  table <- college |> 
+    html_node(".csp-ap-credit-policy-table") %>%
+    html_table()
+  print(table)
+  
+  Sys.sleep(30)
+  
+}
+  
