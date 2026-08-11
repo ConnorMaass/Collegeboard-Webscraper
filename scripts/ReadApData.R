@@ -8,6 +8,8 @@ library(googledrive)
 
 DELAY_TIME <- 2
 
+AP_LIST = c("Computer Science A", "English Language and Composition")
+
 #Authenticate Drive
 googledrive::drive_auth(email = "connormaass2@gmail.com")
 
@@ -125,6 +127,9 @@ for(fav in favs){
     html_node(".csp-ap-credit-policy-table") %>%
     html_table()
   print(table)
+  
+  table <- table |> 
+    filter(`AP Courses` %in% AP_LIST)
   
   Sys.sleep(30)
   
