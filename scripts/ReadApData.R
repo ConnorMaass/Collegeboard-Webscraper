@@ -8,17 +8,31 @@ library(googledrive)
 
 DELAY_TIME <- 2
 
-AP_LIST = c("Computer Science A", "English Language and Composition")
-
 #Authenticate Drive
 googledrive::drive_auth(email = "connormaass2@gmail.com")
 
 meta <- googlesheets4::gs4_find("College Research")
 
 wantedCourses <- meta|> 
-  googlesheets4::read_sheet(range = "A1:A6")
+  googlesheets4::read_sheet()
 
-# 1. Start a base session
+#Get location of course list in sheet
+cell <- which(wantedCourses == "WANTED AP COURSES", arr.ind = TRUE)
+row <- cell[1] + 1
+col <- cell[2]
+
+# set initial data frame for working with
+courseList <- data.frame(
+  name = unlist(wantedCourses[row, col:ncol(wantedCourses)], use.names = FALSE),
+  score = as.numeric(unlist(wantedCourses[row + 1, col:ncol(wantedCourses)], use.names = FALSE))
+  )
+#filter out na and NULL
+tempNames <- courseList$name[!is.na(courseList$name) & !is.null(courseList$name) & is.character((courseList$name))]
+
+#change size to be the size of filtered vector
+courseList <- courseList[1:length(tempNames),]
+
+# 1. Start a base session# 1. Start a base sessionnumeric()
 b_bad <- ChromoteSession$new()
 
 # 2. Create an incognito browser context
@@ -129,9 +143,20 @@ for(fav in favs){
   print(table)
   
   table <- table |> 
-    filter(`AP Courses` %in% AP_LIST)
+    filter(`AP Courses` %in% courseList)
   
-  Sys.sleep(30)
+  for(course in courseList$name){
+    currCourse <- table |> 
+      filter(course) |> 
+    
+    bestScore <- 0
+    for(score in currCourse$score){
+      if(score < )
+    }
+    
+  }
+  
   
 }
+
   
