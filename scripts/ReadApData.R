@@ -17,14 +17,14 @@ wantedCourses <- meta|>
   googlesheets4::read_sheet()
 
 #Get location of course list in sheet
-cell <- which(wantedCourses == "WANTED AP COURSES", arr.ind = TRUE)
-row <- cell[1] + 1
-col <- cell[2]
+wantedAPCell <- which(wantedCourses == "WANTED AP COURSES", arr.ind = TRUE)
+wantedAPRow <- wantedAPCell[1] + 1
+wantedAPCol <- wantedAPCell[2]
 
 # set initial data frame for working with
 courseList <- data.frame(
-  name = unlist(wantedCourses[row, col:ncol(wantedCourses)], use.names = FALSE),
-  score = as.numeric(unlist(wantedCourses[row + 1, col:ncol(wantedCourses)], use.names = FALSE))
+  name = unlist(wantedCourses[wantedAPRow:nrow(wantedCourses), wantedAPCol], use.names = FALSE),
+  score = as.numeric(unlist(wantedCourses[wantedAPRow:nrow(wantedCourses), wantedAPCol+1], use.names = FALSE))
   )
 #filter out na and NULL
 tempNames <- courseList$name[!is.na(courseList$name) & !is.null(courseList$name) & is.character((courseList$name))]
@@ -124,6 +124,12 @@ webpage <- read_html(html_raw)
 favs <- webpage |> 
   html_nodes(".college-name-anchor")
 
+#for storing all the necessary data
+APdf <- data.frame(
+  credit = numeric()
+  
+)
+
 for(fav in favs){
   link <- fav |> 
     html_attr("href") |> 
@@ -145,18 +151,26 @@ for(fav in favs){
   table <- table |> 
     filter(`AP Courses` %in% courseList)
   
-  for(course in courseList$name){
+  for(userCourse in courseList$name){
     currCourse <- table |> 
-      filter(course) |> 
+     filter(`AP Courses` == userCourse)
     
-    bestScore <- 0
-    for(score in currCourse$score){
-      if(score < )
-    }
+    currScores <- currCourse$`Min Score Required`
+    
+    courseLoc <- which(courseList == userCourse, arr.ind = TRUE)
+    scoreRow <- courseLoc[1]
+    userScore <- courseList[scoreRow, "score"]
+    
+    userScore %in% currScores
     
   }
   
   
 }
+
+APDataCol <- match("AP DATA", colnames(wantedCourses))
+dataColStart <- LETTERS[APDataCol]
+dataColEnd <- LETTERS[APDATACol + 3]
+dataRange <- paste0(dataColStart, ":", dataColEnd)
 
   
