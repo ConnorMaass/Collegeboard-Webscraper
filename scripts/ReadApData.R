@@ -22,9 +22,11 @@ wantedAPRow <- wantedAPCell[1] + 1
 wantedAPCol <- wantedAPCell[2]
 
 # set initial data frame for working with
+
+endCourseList <- 36 #nrow(wantedCourses)
 courseList <- data.frame(
-  name = unlist(wantedCourses[wantedAPRow:nrow(wantedCourses), wantedAPCol], use.names = FALSE),
-  score = as.numeric(unlist(wantedCourses[wantedAPRow:nrow(wantedCourses), wantedAPCol+1], use.names = FALSE))
+  name = unlist(wantedCourses[wantedAPRow:endCourseList, wantedAPCol], use.names = FALSE),
+  score = as.numeric(unlist(wantedCourses[wantedAPRow:endCourseList, wantedAPCol+1], use.names = FALSE))
   )
 #filter out na and NULL
 tempNames <- courseList$name[!is.na(courseList$name) & !is.null(courseList$name) & is.character((courseList$name))]
@@ -122,55 +124,74 @@ b$close()
 
 webpage <- read_html(html_raw)
 favs <- webpage |> 
-  html_nodes(".college-name-anchor")
+  html_nodes(".college-name-anchor") # gets all html elements that contain link to college
 
 #for storing all the necessary data
-APdf <- data.frame(
-  credit = numeric()
+
+APdfColNames <- c("Name", "Credit") # what data you want basically
+
+APDataStartLoc <- which(wantedCourses == "START", arr.ind = TRUE)
+APDataStartRow <- APDataStartLoc[1] + 1
+
+appendRow <- APDataStartRow
+for(fav in favs){ # fav is the individual html element to the college page
   
-)
-
-for(fav in favs){
   link <- fav |> 
-    html_attr("href") |> 
-    paste0("/academics")
-
-  sesh <- ChromoteSession$new()
+    html_attr("href") |> # contains the link
+    paste0("/academics") #adding academics brings to page including AP data table
+  
+  # for navigating to each page separately
+  sesh <- ChromoteSession$new() 
   sesh$view()
   sesh$Page$navigate(link)
-  Sys.sleep(1)
+  
+  Sys.sleep(1) # wait for js to load html
+  
   html_raw <- sesh$Runtime$evaluate("document.documentElement.outerHTML")$result$value
   sesh$close()
+  
   college <- read_html(html_raw)
   
   table <- college |> 
-    html_node(".csp-ap-credit-policy-table") %>%
+    html_node(".csp-ap-credit-policy-table") %>% # table has this class
     html_table()
   print(table)
-  
+
   table <- table |> 
-    filter(`AP Courses` %in% courseList)
+    filter(`AP Courses` %in% courseList$name)
   
-  for(userCourse in courseList$name){
-    currCourse <- table |> 
-     filter(`AP Courses` == userCourse)
-    
-    currScores <- currCourse$`Min Score Required`
-    
-    courseLoc <- which(courseList == userCourse, arr.ind = TRUE)
-    scoreRow <- courseLoc[1]
-    userScore <- courseList[scoreRow, "score"]
-    
-    userScore %in% currScores
-    
-  }
+  APdf <- data.frame( # turns the above APdfColNames into a data frame with those col names
+    matrix(
+      ncol = length(APdfColNames),
+      nrow = 0, 
+      dimnames = list(NULL, APdfColNames)
+    )
+  )
   
+  APdf <- APdf |> 
+    rbind(table[,1:2])
   
+  googlesheets4::range_write(meta$id, APdf, range = cell_limits(c(APDataStartRow, 1), c(NA, NA)), col_names = FALSE)
+  
+  # 
+  # for(userCourse in courseList$name){ # looping through each AP course the college accepts
+  #   currCourse <- table |>
+  #    filter(`AP Courses` == userCourse)
+  # 
+  #   currScores <- currCourse$`Min Score Required`
+  # 
+  #   #read user score
+  #   courseLoc <- which(courseList == userCourse, arr.ind = TRUE)
+  #   scoreRow <- courseLoc[1]
+  #   userScore <- courseList[scoreRow, "score"]
+  # 
+  #   #userScore %in% currScores
+  # 
+  # }
+
 }
 
-APDataCol <- match("AP DATA", colnames(wantedCourses))
-dataColStart <- LETTERS[APDataCol]
-dataColEnd <- LETTERS[APDATACol + 3]
-dataRange <- paste0(dataColStart, ":", dataColEnd)
+
+
 
   
