@@ -131,7 +131,7 @@ favs <- webpage |>
 APdfColNames <- c("Name", "Credit") # what data you want basically
 
 APDataStartLoc <- which(wantedCourses == "START", arr.ind = TRUE)
-APDataStartRow <- APDataStartLoc[1] + 1
+APDataStartRow <- APDataStartLoc[1] + 2
 
 appendRow <- APDataStartRow
 for(fav in favs){ # fav is the individual html element to the college page
@@ -156,6 +156,10 @@ for(fav in favs){ # fav is the individual html element to the college page
     html_node(".csp-ap-credit-policy-table") %>% # table has this class
     html_table()
   print(table)
+  
+  collegeName <- college |> 
+    html_node("h1[data-testid='csp-banner-section-school-name-label']") |> 
+    html_text()
 
   table <- table |> 
     filter(`AP Courses` %in% courseList$name)
@@ -171,8 +175,10 @@ for(fav in favs){ # fav is the individual html element to the college page
   APdf <- APdf |> 
     rbind(table[,1:2])
   
-  googlesheets4::range_write(meta$id, APdf, range = cell_limits(c(APDataStartRow, 1), c(NA, NA)), col_names = FALSE)
-  
+  googlesheets4::range_write(meta$id, data.frame(collegeName), range = cell_limits(c(appendRow, 1), c(NA, NA)), col_names = FALSE)
+  appendRow <- appendRow + 1 
+  googlesheets4::range_write(meta$id, APdf, range = cell_limits(c(appendRow, 1), c(NA, NA)), col_names = FALSE)
+  appendRow <- appendRow + nrow(APdf) 
   # 
   # for(userCourse in courseList$name){ # looping through each AP course the college accepts
   #   currCourse <- table |>
